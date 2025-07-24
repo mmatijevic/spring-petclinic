@@ -59,6 +59,9 @@
             <span th:text="#{error}">Error</span>
           </li>
 
+          <li th:replace="~{::menuItem ('/login','login','login','user',#{login})}"></li>
+          <li th:replace="~{::menuItem ('/logout','logout','logout','sign-out',#{logout})}"></li>
+
         </ul>
       </div>
     </div>
