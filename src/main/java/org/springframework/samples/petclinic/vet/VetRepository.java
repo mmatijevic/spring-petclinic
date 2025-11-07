@@ -55,4 +55,19 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	@Cacheable("vets")
 	Page<Vet> findAll(Pageable pageable) throws DataAccessException;
 
+	/**
+	 * Retrieve a <code>Vet</code> by ID.
+	 * @param id the ID of the vet
+	 * @return the <code>Vet</code> or empty Optional if not found
+	 */
+	@Transactional(readOnly = true)
+	java.util.Optional<Vet> findById(Integer id) throws DataAccessException;
+
+	/**
+	 * Save a <code>Vet</code> to the data store.
+	 * @param vet the <code>Vet</code> to save
+	 */
+	@Transactional
+	void save(Vet vet) throws DataAccessException;
+
 }
