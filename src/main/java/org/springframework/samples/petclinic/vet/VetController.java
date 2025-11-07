@@ -15,16 +15,25 @@
  */
 package org.springframework.samples.petclinic.vet;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import jakarta.validation.Valid;
 import org.springframework.samples.petclinic.util.DomainMapper;
 
 /**
@@ -36,10 +45,20 @@ import org.springframework.samples.petclinic.util.DomainMapper;
 @Controller
 class VetController {
 
+	private static final String VIEWS_VET_CREATE_OR_UPDATE_FORM = "vets/createOrUpdateVetForm";
+
 	private final VetRepository vetRepository;
 
-	public VetController(VetRepository vetRepository) {
+	private final SpecialtyRepository specialtyRepository;
+
+	public VetController(VetRepository vetRepository, SpecialtyRepository specialtyRepository) {
 		this.vetRepository = vetRepository;
+		this.specialtyRepository = specialtyRepository;
+	}
+
+	@ModelAttribute("specialties")
+	public List<Specialty> populateSpecialties() {
+		return (List<Specialty>) this.specialtyRepository.findAll();
 	}
 
 	@GetMapping("/vets.html")
@@ -69,6 +88,48 @@ class VetController {
 		Vets vets = new Vets();
 		vets.getVetList().addAll(this.vetRepository.findAll());
 		return vets;
+	}
+
+	@GetMapping("/vets/{vetId}/edit")
+	public String initUpdateVetForm(@PathVariable("vetId") int vetId, Model model) {
+		Vet vet = DomainMapper.findEntityByIdSimple(vetId, this.vetRepository, "Vet");
+		model.addAttribute("vet", vet);
+		return VIEWS_VET_CREATE_OR_UPDATE_FORM;
+	}
+
+	@PostMapping("/vets/{vetId}/edit")
+	public String processUpdateVetForm(@Valid Vet vet, BindingResult result, @PathVariable("vetId") int vetId,
+			@RequestParam(value = "specialtyIds", required = false) List<Integer> specialtyIds,
+			RedirectAttributes redirectAttributes, Model model) {
+		if (result.hasErrors()) {
+			model.addAttribute("vet", vet);
+			return VIEWS_VET_CREATE_OR_UPDATE_FORM;
+		}
+
+		if (vet.getId() != null && vet.getId() != vetId) {
+			result.rejectValue("id", "mismatch", "The vet ID in the form does not match the URL.");
+			redirectAttributes.addFlashAttribute("error", "Vet ID mismatch. Please try again.");
+			return "redirect:/vets/{vetId}/edit";
+		}
+
+		// Update vet with the form data
+		vet.setId(vetId);
+
+		// Update specialties
+		vet.clearSpecialties();
+		if (specialtyIds != null && !specialtyIds.isEmpty()) {
+			List<Specialty> allSpecialties = (List<Specialty>) this.specialtyRepository.findAll();
+			Set<Integer> selectedIds = new HashSet<>(specialtyIds);
+			for (Specialty specialty : allSpecialties) {
+				if (selectedIds.contains(specialty.getId())) {
+					vet.addSpecialty(specialty);
+				}
+			}
+		}
+
+		this.vetRepository.save(vet);
+		redirectAttributes.addFlashAttribute("message", "Vet Values Updated");
+		return "redirect:/vets.html";
 	}
 
 }

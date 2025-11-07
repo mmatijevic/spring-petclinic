@@ -54,6 +54,9 @@ class VetControllerTests {
 	@MockitoBean
 	private VetRepository vets;
 
+	@MockitoBean
+	private SpecialtyRepository specialties;
+
 	private Vet james() {
 		Vet james = new Vet();
 		james.setFirstName("James");
