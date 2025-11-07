@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import jakarta.validation.Valid;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.samples.petclinic.util.DomainMapper;
 
 /**
  * @author Juergen Hoeller
@@ -62,10 +63,7 @@ class PetController {
 
 	@ModelAttribute("owner")
 	public Owner findOwner(@PathVariable("ownerId") int ownerId) {
-		Optional<Owner> optionalOwner = this.owners.findById(ownerId);
-		Owner owner = optionalOwner.orElseThrow(() -> new IllegalArgumentException(
-				"Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
-		return owner;
+		return DomainMapper.findEntityByIdSimple(ownerId, this.owners, "Owner");
 	}
 
 	@ModelAttribute("pet")
@@ -76,9 +74,7 @@ class PetController {
 			return new Pet();
 		}
 
-		Optional<Owner> optionalOwner = this.owners.findById(ownerId);
-		Owner owner = optionalOwner.orElseThrow(() -> new IllegalArgumentException(
-				"Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
+		Owner owner = DomainMapper.findEntityByIdSimple(ownerId, this.owners, "Owner");
 		return owner.getPet(petId);
 	}
 
