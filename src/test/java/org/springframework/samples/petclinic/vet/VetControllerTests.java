@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -53,6 +54,9 @@ class VetControllerTests {
 
 	@MockitoBean
 	private VetRepository vets;
+
+	@MockitoBean
+	private SpecialtyRepository specialties;
 
 	private Vet james() {
 		Vet james = new Vet();
@@ -98,6 +102,56 @@ class VetControllerTests {
 			.andExpect(status().isOk());
 		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 			.andExpect(jsonPath("$.vetList[0].id").value(1));
+	}
+
+	@Test
+	void testSearchVetsByName() throws Exception {
+		given(this.vets.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(eq("James"), eq("James"),
+				any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(james())));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("name", "James"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("name", "James"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsBySpecialty() throws Exception {
+		given(this.vets.findBySpecialtiesNameContainingIgnoreCase(eq("radiology"), any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("specialty", "radiology"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("specialty", "radiology"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsByNameAndSpecialty() throws Exception {
+		given(this.vets
+			.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseAndSpecialtiesNameContainingIgnoreCase(
+					eq("Helen"), eq("Helen"), eq("radiology"), any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("name", "Helen").param("specialty", "radiology"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("name", "Helen"))
+			.andExpect(model().attribute("specialty", "radiology"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsByEmptyParameters() throws Exception {
+		given(this.vets.findAll(any(Pageable.class))).willReturn(new PageImpl<>(Lists.newArrayList(james(), helen())));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("name", "").param("specialty", ""))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(view().name("vets/vetList"));
 	}
 
 }

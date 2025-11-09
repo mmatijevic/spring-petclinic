@@ -42,12 +42,15 @@ class VetController {
 	}
 
 	@GetMapping("/vets.html")
-	public String showVetList(@RequestParam(defaultValue = "1") int page, Model model) {
+	public String showVetList(@RequestParam(defaultValue = "1") int page, @RequestParam(required = false) String name,
+			@RequestParam(required = false) String specialty, Model model) {
 		// Here we are returning an object of type 'Vets' rather than a collection of Vet
 		// objects so it is simpler for Object-Xml mapping
 		Vets vets = new Vets();
-		Page<Vet> paginated = findPaginated(page);
+		Page<Vet> paginated = findPaginated(page, name, specialty);
 		vets.getVetList().addAll(paginated.toList());
+		model.addAttribute("name", name);
+		model.addAttribute("specialty", specialty);
 		return addPaginationModel(page, paginated, model);
 	}
 
@@ -61,9 +64,36 @@ class VetController {
 	}
 
 	private Page<Vet> findPaginated(int page) {
+		return findPaginated(page, null, null);
+	}
+
+	private Page<Vet> findPaginated(int page, String name, String specialty) {
 		int pageSize = 5;
 		Pageable pageable = PageRequest.of(page - 1, pageSize);
-		return vetRepository.findAll(pageable);
+
+		// Determine which search method to use based on provided parameters
+		boolean hasName = name != null && !name.trim().isEmpty();
+		boolean hasSpecialty = specialty != null && !specialty.trim().isEmpty();
+
+		if (hasName && hasSpecialty) {
+			// Search by both name and specialty
+			return vetRepository
+				.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseAndSpecialtiesNameContainingIgnoreCase(
+						name.trim(), name.trim(), specialty.trim(), pageable);
+		}
+		else if (hasName) {
+			// Search by name only
+			return vetRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(name.trim(),
+					name.trim(), pageable);
+		}
+		else if (hasSpecialty) {
+			// Search by specialty only
+			return vetRepository.findBySpecialtiesNameContainingIgnoreCase(specialty.trim(), pageable);
+		}
+		else {
+			// No search criteria - return all vets
+			return vetRepository.findAll(pageable);
+		}
 	}
 
 	@GetMapping({ "/vets" })

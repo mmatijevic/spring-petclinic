@@ -55,4 +55,55 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	@Cacheable("vets")
 	Page<Vet> findAll(Pageable pageable) throws DataAccessException;
 
+	/**
+	 * Retrieve a single <code>Vet</code> by id
+	 * @param id the id to search for
+	 * @return the <code>Vet</code> if found
+	 * @throws DataAccessException
+	 */
+	@Transactional(readOnly = true)
+	Vet findById(Integer id) throws DataAccessException;
+
+	/**
+	 * Save a <code>Vet</code> to the data store, either inserting or updating it.
+	 * @param vet the <code>Vet</code> to save
+	 * @see BaseEntity#isNew
+	 */
+	void save(Vet vet) throws DataAccessException;
+
+	/**
+	 * Search for <code>Vet</code>s by name (first or last) and specialty
+	 * @param name the name to search for (matches first or last name, case-insensitive)
+	 * @param specialtyName the specialty name to search for (case-insensitive)
+	 * @param pageable pagination information
+	 * @return a page of matching <code>Vet</code>s
+	 * @throws DataAccessException
+	 */
+	@Transactional(readOnly = true)
+	Page<Vet> findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseAndSpecialtiesNameContainingIgnoreCase(
+			String firstName, String lastName, String specialtyName, Pageable pageable) throws DataAccessException;
+
+	/**
+	 * Search for <code>Vet</code>s by name (first or last)
+	 * @param firstName the first name to search for (case-insensitive)
+	 * @param lastName the last name to search for (case-insensitive)
+	 * @param pageable pagination information
+	 * @return a page of matching <code>Vet</code>s
+	 * @throws DataAccessException
+	 */
+	@Transactional(readOnly = true)
+	Page<Vet> findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(String firstName, String lastName,
+			Pageable pageable) throws DataAccessException;
+
+	/**
+	 * Search for <code>Vet</code>s by specialty name
+	 * @param specialtyName the specialty name to search for (case-insensitive)
+	 * @param pageable pagination information
+	 * @return a page of matching <code>Vet</code>s
+	 * @throws DataAccessException
+	 */
+	@Transactional(readOnly = true)
+	Page<Vet> findBySpecialtiesNameContainingIgnoreCase(String specialtyName, Pageable pageable)
+			throws DataAccessException;
+
 }
