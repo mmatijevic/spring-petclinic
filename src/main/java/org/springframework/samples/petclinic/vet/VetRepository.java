@@ -19,10 +19,13 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.Optional;
 
 /**
  * Repository class for <code>Vet</code> domain objects All method names are compliant
@@ -54,5 +57,34 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	@Transactional(readOnly = true)
 	@Cacheable("vets")
 	Page<Vet> findAll(Pageable pageable) throws DataAccessException;
+
+	/**
+	 * Retrieve a <code>Vet</code> by id
+	 * @param id the id to search for
+	 * @return the <code>Vet</code> if found
+	 */
+	@Transactional(readOnly = true)
+	Optional<Vet> findById(Integer id) throws DataAccessException;
+
+	/**
+	 * Save a <code>Vet</code> to the data store
+	 * @param vet the <code>Vet</code> to save
+	 */
+	void save(Vet vet) throws DataAccessException;
+
+	/**
+	 * Search for vets by name (first name or last name) and/or specialty. If both
+	 * parameters are null or empty, returns all vets.
+	 * @param name the name to search for (searches in both first and last name)
+	 * @param specialtyName the specialty name to filter by
+	 * @param pageable pagination information
+	 * @return a page of matching vets
+	 */
+	@Transactional(readOnly = true)
+	@Query("SELECT DISTINCT v FROM Vet v LEFT JOIN v.specialties s "
+			+ "WHERE (:name IS NULL OR :name = '' OR LOWER(v.firstName) LIKE LOWER(CONCAT('%', :name, '%')) OR LOWER(v.lastName) LIKE LOWER(CONCAT('%', :name, '%'))) "
+			+ "AND (:specialtyName IS NULL OR :specialtyName = '' OR LOWER(s.name) LIKE LOWER(CONCAT('%', :specialtyName, '%')))")
+	Page<Vet> searchVets(@Param("name") String name, @Param("specialtyName") String specialtyName, Pageable pageable)
+			throws DataAccessException;
 
 }

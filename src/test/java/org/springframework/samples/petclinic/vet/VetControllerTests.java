@@ -54,6 +54,9 @@ class VetControllerTests {
 	@MockitoBean
 	private VetRepository vets;
 
+	@MockitoBean
+	private SpecialtyRepository specialties;
+
 	private Vet james() {
 		Vet james = new Vet();
 		james.setFirstName("James");
@@ -74,12 +77,28 @@ class VetControllerTests {
 		return helen;
 	}
 
+	private Vet linda() {
+		Vet linda = new Vet();
+		linda.setFirstName("Linda");
+		linda.setLastName("Douglas");
+		linda.setId(3);
+		Specialty dentistry = new Specialty();
+		dentistry.setId(2);
+		dentistry.setName("dentistry");
+		linda.addSpecialty(dentistry);
+		Specialty surgery = new Specialty();
+		surgery.setId(3);
+		surgery.setName("surgery");
+		linda.addSpecialty(surgery);
+		return linda;
+	}
+
 	@BeforeEach
 	void setup() {
-		given(this.vets.findAll()).willReturn(Lists.newArrayList(james(), helen()));
+		given(this.vets.findAll()).willReturn(Lists.newArrayList(james(), helen(), linda()));
 		given(this.vets.findAll(any(Pageable.class)))
-			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james(), helen())));
-
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james(), helen(), linda())));
+		given(this.specialties.findAll()).willReturn(Lists.newArrayList());
 	}
 
 	@Test
@@ -98,6 +117,59 @@ class VetControllerTests {
 			.andExpect(status().isOk());
 		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 			.andExpect(jsonPath("$.vetList[0].id").value(1));
+	}
+
+	@Test
+	void testSearchVetsByName() throws Exception {
+		// Mock the search to return only Helen when searching for "Helen"
+		given(this.vets.searchVets(any(String.class), any(), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html?page=1&name=Helen"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("name", "Helen"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsBySpecialty() throws Exception {
+		// Mock the search to return only Helen when searching for "radiology"
+		given(this.vets.searchVets(any(), any(String.class), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html?page=1&specialty=radiology"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("specialty", "radiology"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsByNameAndSpecialty() throws Exception {
+		// Mock the search to return Helen when searching for both name and specialty
+		given(this.vets.searchVets(any(String.class), any(String.class), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html?page=1&name=Leary&specialty=radiology"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("name", "Leary"))
+			.andExpect(model().attribute("specialty", "radiology"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsWithNoResults() throws Exception {
+		// Mock the search to return empty list when no matches found
+		given(this.vets.searchVets(any(String.class), any(), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList()));
+
+		mockMvc.perform(get("/vets.html?page=1&name=NonExistent"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("name", "NonExistent"))
+			.andExpect(view().name("vets/vetList"));
 	}
 
 }
