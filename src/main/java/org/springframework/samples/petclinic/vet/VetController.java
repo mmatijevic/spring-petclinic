@@ -42,12 +42,18 @@ class VetController {
 	}
 
 	@GetMapping("/vets.html")
-	public String showVetList(@RequestParam(defaultValue = "1") int page, Model model) {
+	public String showVetList(@RequestParam(defaultValue = "1") int page, @RequestParam(required = false) String name,
+			@RequestParam(required = false) String specialty, Model model) {
 		// Here we are returning an object of type 'Vets' rather than a collection of Vet
 		// objects so it is simpler for Object-Xml mapping
 		Vets vets = new Vets();
-		Page<Vet> paginated = findPaginated(page);
+		Page<Vet> paginated = findPaginated(page, name, specialty);
 		vets.getVetList().addAll(paginated.toList());
+
+		// Add search parameters to model for form persistence
+		model.addAttribute("name", name);
+		model.addAttribute("specialty", specialty);
+
 		return addPaginationModel(page, paginated, model);
 	}
 
@@ -61,9 +67,26 @@ class VetController {
 	}
 
 	private Page<Vet> findPaginated(int page) {
+		return findPaginated(page, null, null);
+	}
+
+	private Page<Vet> findPaginated(int page, String name, String specialty) {
 		int pageSize = 5;
 		Pageable pageable = PageRequest.of(page - 1, pageSize);
-		return vetRepository.findAll(pageable);
+
+		// Check if any search parameters are provided
+		boolean hasSearchCriteria = (name != null && !name.trim().isEmpty())
+				|| (specialty != null && !specialty.trim().isEmpty());
+
+		if (hasSearchCriteria) {
+			// Use empty string instead of null for empty parameters
+			String searchName = (name != null && !name.trim().isEmpty()) ? name.trim() : null;
+			String searchSpecialty = (specialty != null && !specialty.trim().isEmpty()) ? specialty.trim() : null;
+			return vetRepository.searchVets(searchName, searchSpecialty, pageable);
+		}
+		else {
+			return vetRepository.findAll(pageable);
+		}
 	}
 
 	@GetMapping({ "/vets" })

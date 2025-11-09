@@ -33,10 +33,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.hasSize;
 
 /**
  * Test class for the {@link VetController}
@@ -74,22 +75,31 @@ class VetControllerTests {
 		return helen;
 	}
 
+	private Vet linda() {
+		Vet linda = new Vet();
+		linda.setFirstName("Linda");
+		linda.setLastName("Douglas");
+		linda.setId(3);
+		Specialty dentistry = new Specialty();
+		dentistry.setId(2);
+		dentistry.setName("dentistry");
+		linda.addSpecialty(dentistry);
+		return linda;
+	}
+
 	@BeforeEach
 	void setup() {
-		given(this.vets.findAll()).willReturn(Lists.newArrayList(james(), helen()));
+		given(this.vets.findAll()).willReturn(Lists.newArrayList(james(), helen(), linda()));
 		given(this.vets.findAll(any(Pageable.class)))
-			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james(), helen())));
-
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james(), helen(), linda())));
 	}
 
 	@Test
 	void testShowVetListHtml() throws Exception {
-
 		mockMvc.perform(MockMvcRequestBuilders.get("/vets.html?page=1"))
 			.andExpect(status().isOk())
 			.andExpect(model().attributeExists("listVets"))
 			.andExpect(view().name("vets/vetList"));
-
 	}
 
 	@Test
@@ -98,6 +108,84 @@ class VetControllerTests {
 			.andExpect(status().isOk());
 		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
 			.andExpect(jsonPath("$.vetList[0].id").value(1));
+	}
+
+	@Test
+	void testSearchVetsByName() throws Exception {
+		// Setup: when searching for "Helen", return only Helen
+		given(this.vets.searchVets(eq("Helen"), isNull(), any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("name", "Helen"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("name", "Helen"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsBySpecialty() throws Exception {
+		// Setup: when searching for "radiology", return only Helen
+		given(this.vets.searchVets(isNull(), eq("radiology"), any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("specialty", "radiology"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("specialty", "radiology"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsByNameAndSpecialty() throws Exception {
+		// Setup: when searching for name "Helen" and specialty "radiology", return Helen
+		given(this.vets.searchVets(eq("Helen"), eq("radiology"), any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("name", "Helen").param("specialty", "radiology"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("name", "Helen"))
+			.andExpect(model().attribute("specialty", "radiology"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsWithEmptyName() throws Exception {
+		// Setup: when name is empty string, should search with null
+		given(this.vets.searchVets(isNull(), eq("dentistry"), any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList(linda())));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("name", "").param("specialty", "dentistry"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchVetsNoResults() throws Exception {
+		// Setup: when searching for non-existent vet, return empty list
+		given(this.vets.searchVets(eq("NonExistent"), isNull(), any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList()));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("name", "NonExistent"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeExists("listVets"))
+			.andExpect(model().attribute("name", "NonExistent"))
+			.andExpect(view().name("vets/vetList"));
+	}
+
+	@Test
+	void testSearchParametersPreservedInModel() throws Exception {
+		// Verify that search parameters are added to the model for form persistence
+		given(this.vets.searchVets(eq("James"), eq("surgery"), any(Pageable.class)))
+			.willReturn(new PageImpl<>(Lists.newArrayList()));
+
+		mockMvc.perform(get("/vets.html").param("page", "1").param("name", "James").param("specialty", "surgery"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("name", "James"))
+			.andExpect(model().attribute("specialty", "surgery"))
+			.andExpect(view().name("vets/vetList"));
 	}
 
 }
