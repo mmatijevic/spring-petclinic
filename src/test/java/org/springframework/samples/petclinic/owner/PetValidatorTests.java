@@ -98,6 +98,20 @@ public class PetValidatorTests {
 			petValidator.validate(pet, errors);
 
 			assertTrue(errors.hasFieldErrors("type"));
+			org.junit.jupiter.api.Assertions.assertEquals("required", errors.getFieldError("type").getCode());
+		}
+
+		@Test
+		void testValidateWithInvalidPetTypeForExistingPet() {
+			pet.setId(42);
+			pet.setName(petName);
+			pet.setType(null);
+			pet.setBirthDate(petBirthDate);
+
+			petValidator.validate(pet, errors);
+
+			assertTrue(errors.hasFieldErrors("type"));
+			org.junit.jupiter.api.Assertions.assertEquals("required", errors.getFieldError("type").getCode());
 		}
 
 		@Test
