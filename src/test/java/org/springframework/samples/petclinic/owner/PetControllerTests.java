@@ -68,10 +68,10 @@ class PetControllerTests {
 
 	@BeforeEach
 	void setup() {
-		PetType cat = new PetType();
-		cat.setId(3);
-		cat.setName("hamster");
-		given(this.types.findPetTypes()).willReturn(List.of(cat));
+		PetType hamster = new PetType();
+		hamster.setId(3);
+		hamster.setName("hamster");
+		given(this.types.findPetTypes()).willReturn(List.of(hamster));
 
 		Owner owner = new Owner();
 		Pet pet = new Pet();
